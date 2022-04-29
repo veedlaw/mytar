@@ -8,6 +8,13 @@
 //  * -f option
 // 
 
+
+enum Option {
+	NO_OPT,
+	EXTRACT_OPT,
+	LIST_OPT
+};
+
 /**
  * @brief Finds and returns cmd-line options.
  *
@@ -37,7 +44,8 @@ int get_opt(char*** argv)
 void parse_args(int argc, char** argv)
 {
 	char* filename;
-	char** list_files;
+	enum Option operation = NO_OPT;
+	char* list_files[argc];
 
 	if (argc == 1) 
 	{
@@ -50,14 +58,31 @@ void parse_args(int argc, char** argv)
 		switch (opt)
 		{
 			case 't':
-				// TODO
+				for (int i = 0; NULL != *argv && **argv != '-'; i++)
+				{
+					list_files[i] = *argv;	
+					argv++;
+				}
 				break;
 			case 'f':
-				// TODO
+				/**
+				 * If it is specified then the next word in
+				 * arguments is the filename.
+				 */
+				if (NULL == *argv)
+				{
+					err(64, "option requires an argument -- 'f'");
+				}
+				filename = *argv;
 				break;
 			default:
 				err(2, "Unknown option -%c", opt);
 		}
+	}
+
+	if (NULL != filename && operation == NO_OPT)
+	{
+		err(2, "You must specify one of the '-tx' options");
 	}
 }
 
