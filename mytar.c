@@ -9,7 +9,8 @@
 // 
 
 
-enum Option {
+enum Option 
+{
 	NO_OPT,
 	EXTRACT_OPT,
 	LIST_OPT
@@ -40,12 +41,16 @@ int get_opt(char*** argv)
 	return -1;
 }
 
-
-void parse_args(int argc, char** argv)
+struct tar_action_s
 {
 	char* filename;
+	char** file_list;
+};
+
+struct tar_action_s parse_args(int argc, char** argv)
+{
 	enum Option operation = NO_OPT;
-	char* list_files[argc];
+	struct tar_action_s tar_action;
 
 	if (argc == 1) 
 	{
@@ -60,7 +65,7 @@ void parse_args(int argc, char** argv)
 			case 't':
 				for (int i = 0; NULL != *argv && **argv != '-'; i++)
 				{
-					list_files[i] = *argv;	
+					tar_action.file_list[i] = *argv;	
 					argv++;
 				}
 				break;
@@ -73,21 +78,23 @@ void parse_args(int argc, char** argv)
 				{
 					err(64, "option requires an argument -- 'f'");
 				}
-				filename = *argv;
+				tar_action.filename = *argv;
 				break;
 			default:
 				err(2, "Unknown option -%c", opt);
 		}
 	}
 
-	if (NULL != filename && operation == NO_OPT)
+	if (NULL != tar_action.filename && operation == NO_OPT)
 	{
 		err(2, "You must specify one of the '-tx' options");
 	}
+
+	return tar_action;
 }
 
 
 int main(int argc, char** argv)
 {
-	parse_args(argc, argv);
+	struct tar_action_s operations = parse_args(argc, argv);
 }
