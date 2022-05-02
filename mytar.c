@@ -8,6 +8,38 @@
 //  * -f option
 // 
 
+/* tar Header Block, from POSIX 1003.1-1990.  */
+
+/* POSIX header.  */
+
+struct posix_header
+{                              /* byte offset */
+  char name[100];               /*   0 */
+  char mode[8];                 /* 100 */
+  char uid[8];                  /* 108 */
+  char gid[8];                  /* 116 */
+  char size[12];                /* 124 */
+  char mtime[12];               /* 136 */
+  char chksum[8];               /* 148 */
+  char typeflag;                /* 156 */
+  char linkname[100];           /* 157 */
+  char magic[6];                /* 257 */
+  char version[2];              /* 263 */
+  char uname[32];               /* 265 */
+  char gname[32];               /* 297 */
+  char devmajor[8];             /* 329 */
+  char devminor[8];             /* 337 */
+  char prefix[155];             /* 345 */
+                                /* 500 */
+};
+
+#define TMAGIC   "ustar"        /* ustar and a null */
+#define TMAGLEN  6
+#define TVERSION "00"           /* 00 and no null */
+#define TVERSLEN 2
+
+/* Values used in typeflag field.  */
+#define REGTYPE  '0'            /* regular file */
 
 enum Option 
 {
@@ -43,6 +75,7 @@ int get_opt(char*** argv)
 
 struct tar_action_s
 {
+	enum Option option;
 	char* filename;
 	char** file_list;
 };
@@ -58,7 +91,6 @@ struct tar_action_s
  */
 struct tar_action_s parse_args(int argc, char** argv)
 {
-	enum Option operation = NO_OPT;
 	struct tar_action_s tar_action;
 
 	if (argc == 1) 
@@ -77,7 +109,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 					tar_action.file_list[i] = *argv;	
 					argv++;
 				}
-				operation = LIST_OPT;
+				tar_action.option = LIST_OPT;
 				break;
 			case 'f':
 				/**
@@ -95,7 +127,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 		}
 	}
 
-	if (NULL != tar_action.filename && operation == NO_OPT) 
+	if (NULL != tar_action.filename && tar_action.option == NO_OPT) 
 	{
 		err(2, "You must specify one of the '-tx' options");
 	}
