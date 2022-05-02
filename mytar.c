@@ -47,6 +47,15 @@ struct tar_action_s
 	char** file_list;
 };
 
+/**
+ * @brief Parses the command-line arguments into a tar_action_s struct.
+ * 
+ * Walks the argv pointer to parse and check validity of command-line arguments.
+ * If succesful then returns a tar_action_s, otherwise exits with an error.
+ * 
+ * @param argv Command-line arguments.
+ * @return Struct describing action of parsed command-line arguments.
+ */
 struct tar_action_s parse_args(int argc, char** argv)
 {
 	enum Option operation = NO_OPT;
@@ -68,6 +77,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 					tar_action.file_list[i] = *argv;	
 					argv++;
 				}
+				operation = LIST_OPT;
 				break;
 			case 'f':
 				/**
@@ -85,7 +95,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 		}
 	}
 
-	if (NULL != tar_action.filename && operation == NO_OPT)
+	if (NULL != tar_action.filename && operation == NO_OPT) 
 	{
 		err(2, "You must specify one of the '-tx' options");
 	}
