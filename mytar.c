@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <err.h>
+#include <string.h>
+#include <stdlib.h>
 
 // TODO: Implement
 //  * -t operation
@@ -9,9 +11,7 @@
 // 
 
 /* tar Header Block, from POSIX 1003.1-1990.  */
-
 /* POSIX header.  */
-
 struct posix_header
 {                              /* byte offset */
   char name[100];               /*   0 */
@@ -32,14 +32,28 @@ struct posix_header
   char prefix[155];             /* 345 */
                                 /* 500 */
 };
-
-#define TMAGIC   "ustar"        /* ustar and a null */
-#define TMAGLEN  6
-#define TVERSION "00"           /* 00 and no null */
-#define TVERSLEN 2
+char gnu_magic[] = "ustar  ";
+char ustar_magic[] = "ustar";
 
 /* Values used in typeflag field.  */
 #define REGTYPE  '0'            /* regular file */
+size_t BLOCKSIZE = 512;
+
+/* Debug */
+void print_header(struct posix_header header)
+{
+	printf("name[100] = %s", header.name);
+	printf("\nmode[8]= %s", header.mode);
+	printf("\nuid[8] = %s", header.uid);
+	printf("\ngid[8] = %s", header.gid);
+	printf("\nsize[12] = %s", header.size);
+	printf("\nmtime[12] = %s", header.mtime);
+	printf("\nchksum[8] = %s", header.chksum);
+	printf("\ntypeflag(char) = %c", header.typeflag);
+	printf("\nlinkname[100] = %s", header.linkname);
+	printf("\nmagic[6] = '%s'", header.magic);
+	printf("\nversion[2] = %s\n", header.version);
+}
 
 enum Option 
 {
@@ -49,30 +63,34 @@ enum Option
 };
 
 /**
- * @brief Finds and returns cmd-line options.
+ * @brief Returns cmd-line arguments.
  *
- * Walks the given pointer until an operation or option [word starting with '-']
- * is found  and returns the character following '-' or -1 upon walking to 
- * the end of the args array.
+ * Walks the given pointer and returns each string.
  * 
  * @param argv Command-line arguments.
- * @return int Character code of option or -1 at end of input.
+ * @return Argument or character of option or NULL at end of input.
  */
-int get_opt(char*** argv)
+char* get_arg(char*** argv)
 {
 	while (NULL != **argv)
 	{
 		if (***argv == '-')
 		{
-			char opt = *(**argv + 1);
 			(*argv)++;
-			return opt;
+			return **argv;
 		}
-		(*argv)++;
+		else
+		{
+			(*argv)++;
+			return **argv;
+		}
 	}
-	return -1;
+	return NULL;
 }
 
+/**
+ * Describes a tar action
+ */
 struct tar_action_s
 {
 	enum Option option;
@@ -92,23 +110,22 @@ struct tar_action_s
 struct tar_action_s parse_args(int argc, char** argv)
 {
 	struct tar_action_s tar_action;
+	tar_action.file_list = malloc(argc * sizeof(char*));
 
 	if (argc == 1) 
 	{
-		err(2, "need at least one option");
+		errx(2, "need at least one option");
 	}
 
-	int opt;
-	while ((opt = get_opt(&argv)) != -1)
+	int num_file = 0;
+	char* arg;
+	while ((arg = get_arg(&argv)) != NULL)
 	{
-		switch (opt)
+		if (arg[0] == '-')
 		{
+			switch (arg[1])
+			{
 			case 't':
-				for (int i = 0; NULL != *argv && **argv != '-'; i++)
-				{
-					tar_action.file_list[i] = *argv;	
-					argv++;
-				}
 				tar_action.option = LIST_OPT;
 				break;
 			case 'f':
@@ -116,6 +133,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 				 * If it is specified then the next word in
 				 * arguments is the filename.
 				 */
+				argv++;
 				if (NULL == *argv)
 				{
 					err(64, "option requires an argument -- 'f'");
@@ -123,13 +141,20 @@ struct tar_action_s parse_args(int argc, char** argv)
 				tar_action.filename = *argv;
 				break;
 			default:
-				err(2, "Unknown option -%c", opt);
+				errx(2, "Unknown option: %s", arg);
+				break;
+			}
+		}
+		else
+		{
+			tar_action.file_list[num_file] = *argv;
+			num_file++;
 		}
 	}
 
 	if (NULL != tar_action.filename && tar_action.option == NO_OPT) 
 	{
-		err(2, "You must specify one of the '-tx' options");
+		errx(2, "You must specify one of the '-tx' options");
 	}
 
 	return tar_action;
