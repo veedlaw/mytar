@@ -3,13 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-// TODO: Implement
-//  * -t operation
-//      (also known as --list)
-//      Lists the contents of an archive, or with args
-//  * -f option
-// 
-
 /* tar Header Block, from POSIX 1003.1-1990.  */
 /* POSIX header.  */
 struct posix_header
@@ -96,6 +89,7 @@ struct tar_action_s
 	enum Option option;
 	char* filename;
 	char** file_list;
+	int file_list_len;
 };
 
 /**
@@ -110,7 +104,9 @@ struct tar_action_s
 struct tar_action_s parse_args(int argc, char** argv)
 {
 	struct tar_action_s tar_action;
+	tar_action.option = NO_OPT;
 	tar_action.file_list = malloc(argc * sizeof(char*));
+	tar_action.file_list_len = argc;
 
 	if (argc == 1) 
 	{
@@ -156,12 +152,168 @@ struct tar_action_s parse_args(int argc, char** argv)
 	{
 		errx(2, "You must specify one of the '-tx' options");
 	}
+	if (tar_action.option == NO_OPT)
+	{
+		errx(2, "a");
+	}
+
 
 	return tar_action;
 }
 
 
+/**
+ * @brief Convert an octal string to a long in decimal format.
+ * @param oct_str String representing octal number.
+ * @return Decimal value of the octal number in string representation.
+ */
+long oct_to_dec(char* oct_str)
+{
+	long result = 0, divisor = 1;
+	for (int i = strlen(oct_str)-1; i > 0; i--) 
+	{
+		result += (oct_str[i] - '0') * divisor;
+		divisor *= 8;
+	}
+	return result;
+}
+
+
+/**
+ * @brief Checks if BLOCKSIZE bytes of block are the null byte
+ * @return 0 if true -1 otherwise.
+ */
+int is_empty(char* block)
+{
+	for (size_t i = 0; i < BLOCKSIZE; i++)
+	{
+		if (block[i] != '\0')
+		{
+			return 0;
+		}
+	}
+	return -1;
+}
+
+
+void list_archive(char *archive_name, char** file_list, size_t file_list_len)
+{
+	FILE* fp;
+	if ((fp = fopen(archive_name, "r")) == NULL)
+	{
+		errx(2, "%s: Cannot open: No such file or directory\nError is not recoverable: exiting now", archive_name);
+	}
+	
+	// Allocate memory for the header
+	struct posix_header* header = malloc(sizeof(struct posix_header)); 
+	char* block = malloc(BLOCKSIZE);
+	if (header == NULL || block == NULL)
+	{
+		errx(2, "Unable to allocate memory to read archive. Error is not recoverable: exiting now");
+	}
+	
+	size_t bytes_read = 0;
+	int num_zero_blocks = 0;
+
+	while(1)
+	{
+		// Read the header
+		bytes_read = fread(header, 1, BLOCKSIZE, fp);  
+		
+		if (bytes_read == 0)
+		{
+			break;
+		}
+		if (is_empty((char*)header))
+		{
+			num_zero_blocks++;
+			break;
+		}
+
+		if (strcmp(header->magic, gnu_magic) != 0 && strcmp(header->magic, ustar_magic) != 0)
+		{
+			errx(2, "This does not look like a tar archive: %s", header->name);
+		}
+		if (header->typeflag != REGTYPE)
+		{
+			errx(2, "Unsupported header type: %d\n", header->typeflag);
+		}
+
+		// Check if the user has specified some files and if so
+		// check if we have found a file the user is looking for.
+		if (*file_list != NULL)
+		{
+			for (int i = file_list_len - 1; i >= 0; i--)
+			{
+				if (file_list[i] != NULL && strcmp(file_list[i], header->name) == 0)
+				{
+					// Remove the filename so we know we have found it already.
+					file_list[i] = "";
+					printf("%s\n", header->name);
+					// otherwise unbuffered warnings get printed before as stderr is unbuffered.
+					fflush(stdout);  
+				}
+			}
+		}
+		else
+		{
+			// If the user has not specified any files then we print all files.
+			printf("%s\n", header->name);
+			fflush(stdout);  
+		}
+
+		long size_in_bytes = oct_to_dec(header->size);
+		int num_file_blocks = size_in_bytes / BLOCKSIZE;
+
+		fseek(fp, (num_file_blocks - 1) * BLOCKSIZE, SEEK_CUR);
+		bytes_read = fread(block, 1, BLOCKSIZE, fp);
+		if (bytes_read != BLOCKSIZE)
+		{
+			warnx("Unexpected EOF in archive");
+			errx(2, "Error is not recoverable: exiting now");
+			
+		}
+
+	}
+	bytes_read = fread(block, 1, BLOCKSIZE, fp);
+
+	if (num_zero_blocks && bytes_read == 0)
+	{
+		warnx("A lone zero block at %ld", ftell(fp) / BLOCKSIZE);
+	}
+
+	// Checks if we didn't find any files the user looked for.
+	int num_errors = 0;
+	for (size_t i = 0; i < file_list_len; i++)
+	{
+		if (file_list[i] != NULL && strcmp(file_list[i], ""))
+		{
+			warnx("%s: Not found in archive", file_list[i]);
+			num_errors++;
+		}
+	}
+	if (num_errors != 0)
+	{
+		errx(2, "Exiting with failure status due to previous errors");
+	}
+
+	if (fclose(fp) != 0)
+	{
+		errx(2, "Error closing %s: exiting now", archive_name);
+	}
+	free(header);
+}
+
 int main(int argc, char** argv)
 {
 	struct tar_action_s operations = parse_args(argc, argv);
+	
+	switch (operations.option)
+	{
+	case LIST_OPT:
+		list_archive(operations.filename, operations.file_list, operations.file_list_len);
+		break;
+	default:
+		break;
+	}
 }
