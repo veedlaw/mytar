@@ -103,10 +103,12 @@ struct tar_action_s
  */
 struct tar_action_s parse_args(int argc, char** argv)
 {
-	struct tar_action_s tar_action;
-	tar_action.option = NO_OPT;
-	tar_action.file_list = malloc(argc * sizeof(char*));
-	tar_action.file_list_len = argc;
+	struct tar_action_s tar_action = {
+		.option = NO_OPT,
+		.filename = NULL,
+		.file_list = calloc(argc, sizeof(char*)),
+		.file_list_len = argc
+	};
 
 	if (argc == 1) 
 	{
