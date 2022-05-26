@@ -205,7 +205,10 @@ int is_empty(char* block)
 	return -1;
 }
 
-
+/**
+ * @brief List the contents of a tar archive.
+ * Exits with an error if something goes wrong.
+ */
 void list_archive(char *archive_name, char** file_list, size_t file_list_len)
 {
 	FILE* fp;
