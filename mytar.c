@@ -90,6 +90,7 @@ struct tar_action_s
 	char* filename;
 	char** file_list;
 	int file_list_len;
+	int verbose;
 };
 
 /**
@@ -107,7 +108,8 @@ struct tar_action_s parse_args(int argc, char** argv)
 		.option = NO_OPT,
 		.filename = NULL,
 		.file_list = calloc(argc, sizeof(char*)),
-		.file_list_len = argc
+		.file_list_len = argc,
+		.verbose = 0
 	};
 
 	if (argc == 1) 
@@ -123,24 +125,30 @@ struct tar_action_s parse_args(int argc, char** argv)
 		{
 			switch (arg[1])
 			{
-			case 't':
-				tar_action.option = LIST_OPT;
-				break;
-			case 'f':
-				/**
-				 * If it is specified then the next word in
-				 * arguments is the filename.
-				 */
-				argv++;
-				if (NULL == *argv)
-				{
-					err(64, "option requires an argument -- 'f'");
-				}
-				tar_action.filename = *argv;
-				break;
-			default:
-				errx(2, "Unknown option: %s", arg);
-				break;
+				case 't':
+					tar_action.option = LIST_OPT;
+					break;
+				case 'x':
+					tar_action.option = EXTRACT_OPT;
+					break;
+				case 'f':
+					/**
+					 * If it is specified then the next word in
+					 * arguments is the filename.
+					 */
+					argv++;
+					if (NULL == *argv)
+					{
+						err(64, "option requires an argument -- 'f'");
+					}
+					tar_action.filename = *argv;
+					break;
+				case 'v':
+					tar_action.verbose = 1;
+					break;
+				default:
+					errx(2, "Unknown option: %s", arg);
+					break;
 			}
 		}
 		else
@@ -314,6 +322,9 @@ int main(int argc, char** argv)
 	{
 	case LIST_OPT:
 		list_archive(operations.filename, operations.file_list, operations.file_list_len);
+		break;
+	case EXTRACT_OPT:
+		// TODO
 		break;
 	default:
 		break;
