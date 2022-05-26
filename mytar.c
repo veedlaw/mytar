@@ -180,7 +180,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 long oct_to_dec(char* oct_str)
 {
 	long result = 0, divisor = 1;
-	for (int i = strlen(oct_str)-1; i > 0; i--) 
+	for (int i = strlen(oct_str)-1; i >= 0; i--) 
 	{
 		result += (oct_str[i] - '0') * divisor;
 		divisor *= 8;
