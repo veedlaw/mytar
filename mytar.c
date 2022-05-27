@@ -32,22 +32,6 @@ char ustar_magic[] = "ustar";
 #define REGTYPE  '0'            /* regular file */
 size_t BLOCKSIZE = 512;
 
-/* Debug */
-void print_header(struct posix_header header)
-{
-	printf("name[100] = %s", header.name);
-	printf("\nmode[8]= %s", header.mode);
-	printf("\nuid[8] = %s", header.uid);
-	printf("\ngid[8] = %s", header.gid);
-	printf("\nsize[12] = %s", header.size);
-	printf("\nmtime[12] = %s", header.mtime);
-	printf("\nchksum[8] = %s", header.chksum);
-	printf("\ntypeflag(char) = %c", header.typeflag);
-	printf("\nlinkname[100] = %s", header.linkname);
-	printf("\nmagic[6] = '%s'", header.magic);
-	printf("\nversion[2] = %s\n", header.version);
-}
-
 enum Option 
 {
 	NO_OPT,
