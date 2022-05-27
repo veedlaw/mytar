@@ -127,6 +127,7 @@ struct tar_action_s parse_args(int argc, char** argv)
 			{
 				case 't':
 					tar_action.option = LIST_OPT;
+					tar_action.verbose = 1;
 					break;
 				case 'x':
 					tar_action.option = EXTRACT_OPT;
@@ -188,7 +189,6 @@ long oct_to_dec(char* oct_str)
 	return result;
 }
 
-
 /**
  * @brief Checks if BLOCKSIZE bytes of block are the null byte
  * @return 0 if true -1 otherwise.
@@ -204,7 +204,6 @@ int is_empty(char* block)
 	}
 	return -1;
 }
-
 
 /**
  * @brief Read BLOCKSIZE bytes from fp into header and check for errors whether read block was a correct tar header.
@@ -289,11 +288,12 @@ long filesize_to_block_count(char* size)
 	return num_file_blocks;
 }
 
+
 /**
  * @brief List the contents of a tar archive.
  * Exits with an error if something goes wrong.
  */
-void list_archive(char *archive_name, char** file_list, size_t file_list_len)
+void list_archive(char *archive_name, char** file_list, size_t file_list_len, int verbose)
 {
 	FILE* fp;
 	if ((fp = fopen(archive_name, "r")) == NULL)
@@ -409,7 +409,7 @@ int main(int argc, char** argv)
 	switch (operations.option)
 	{
 	case LIST_OPT:
-		list_archive(operations.filename, operations.file_list, operations.file_list_len);
+		list_archive(operations.filename, operations.file_list, operations.file_list_len, operations.verbose);
 		break;
 	case EXTRACT_OPT:
 		// TODO
