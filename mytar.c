@@ -275,6 +275,21 @@ void show_filename(char* filename, char** file_list, size_t file_list_len)
 }
 
 /**
+ * @brief Convert octal tar header size into number of blocks until end of file.
+ * @return Number of BLOCKSIZE blocks until end of the file
+ */
+long filesize_to_block_count(char* size)
+{
+	long size_in_bytes = oct_to_dec(size);
+	long num_file_blocks = size_in_bytes / BLOCKSIZE;
+	if ((long)(num_file_blocks * BLOCKSIZE) < size_in_bytes)
+	{
+		num_file_blocks++;
+	}
+	return num_file_blocks;
+}
+
+/**
  * @brief List the contents of a tar archive.
  * Exits with an error if something goes wrong.
  */
