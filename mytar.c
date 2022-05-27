@@ -242,6 +242,39 @@ int fetch_header(FILE* fp, struct posix_header* header, int* num_zero_blocks)
 }
 
 /**
+ * @brief Print filenames according to user preferences.
+ * If file_list is specified then it will be searched for a match with filename and will only
+ * print if a match is found. Otherwise the filename is printed.
+ * @param filename Name of file
+ * @param file_list List of file names
+ * @param file_list_len Length of file_list
+ */
+void show_filename(char* filename, char** file_list, size_t file_list_len)
+{
+	// If the user has not specified file arguments then we always print the filename.
+	if (*file_list == NULL)
+	{
+		printf("%s\n", filename);
+		fflush(stdout);  
+		return;
+	}	
+
+	// Otherwise, the user has specified some files and we check whether the current file
+	// is one that the user is specified.
+	// If it is then we print it.
+	for (int i = file_list_len - 1; i >= 0; i--)
+	{
+		if (file_list[i] != NULL && strcmp(file_list[i], filename) == 0)
+		{
+			// Remove the filename so we know we have found it already.
+			file_list[i] = "";
+			printf("%s\n", filename);
+			fflush(stdout); // otherwise warnings get printed before as stderr is unbuffered. 
+		}
+	}
+}
+
+/**
  * @brief List the contents of a tar archive.
  * Exits with an error if something goes wrong.
  */
