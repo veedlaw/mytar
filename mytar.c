@@ -277,8 +277,12 @@ long filesize_to_block_count(char* size)
  * @brief List the contents of a tar archive.
  * Exits with an error if something goes wrong.
  */
-void list_archive(char *archive_name, char** file_list, size_t file_list_len, int verbose)
-{
+void op_on_archive(struct tar_action_s operations)
+{	
+	char* archive_name = operations.filename;
+	char** file_list = operations.file_list;
+	size_t file_list_len = operations.file_list_len;
+
 	FILE* fp;
 	if ((fp = fopen(archive_name, "r")) == NULL)
 	{
@@ -299,7 +303,7 @@ void list_archive(char *archive_name, char** file_list, size_t file_list_len, in
 	// Repeat for each valid header we read:
 	while(fetch_header(fp, header, &num_zero_blocks) == 0)
 	{
-		if (verbose)
+		if (operations.verbose)
 		{
 			show_filename(header->name, file_list, file_list_len);
 		}
@@ -349,59 +353,9 @@ void list_archive(char *archive_name, char** file_list, size_t file_list_len, in
 }
 
 
-		fseek(fp, (num_file_blocks - 1) * BLOCKSIZE, SEEK_CUR);
-		bytes_read = fread(block, 1, BLOCKSIZE, fp);
-		if (bytes_read != BLOCKSIZE)
-		{
-			warnx("Unexpected EOF in archive");
-			errx(2, "Error is not recoverable: exiting now");
-			
-		}
-
-	}
-	bytes_read = fread(block, 1, BLOCKSIZE, fp);
-
-	if (num_zero_blocks && bytes_read == 0)
-	{
-		warnx("A lone zero block at %ld", ftell(fp) / BLOCKSIZE);
-	}
-
-	// Checks if we didn't find any files the user looked for.
-	int num_errors = 0;
-	for (size_t i = 0; i < file_list_len; i++)
-	{
-		if (file_list[i] != NULL && strcmp(file_list[i], ""))
-		{
-			warnx("%s: Not found in archive", file_list[i]);
-			num_errors++;
-		}
-	}
-	if (num_errors != 0)
-	{
-		errx(2, "Exiting with failure status due to previous errors");
-	}
-
-	if (fclose(fp) != 0)
-	{
-		errx(2, "Error closing %s: exiting now", archive_name);
-	}
-	free(header);
-}
-
 int main(int argc, char** argv)
 {
 	// Get the parsed form of the command line arguments.
 	struct tar_action_s operations = parse_args(argc, argv);
-	
-	switch (operations.option)
-	{
-	case LIST_OPT:
-		list_archive(operations.filename, operations.file_list, operations.file_list_len, operations.verbose);
-		break;
-	case EXTRACT_OPT:
-		// TODO
-		break;
-	default:
-		break;
-	}
+	op_on_archive(operations);
 }
