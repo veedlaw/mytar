@@ -284,6 +284,7 @@ void op_on_archive(struct tar_action_s operations)
 	size_t file_list_len = operations.file_list_len;
 
 	FILE* fp;
+	FILE* fout;
 	if ((fp = fopen(archive_name, "r")) == NULL)
 	{
 		errx(2, "%s: Cannot open: No such file or directory\nError is not recoverable: exiting now", archive_name);
@@ -310,6 +311,11 @@ void op_on_archive(struct tar_action_s operations)
 		// Calculate the number of blocks the file occupies in the archive
 		long num_file_blocks = filesize_to_block_count(header->size);
 
+		if (operations.option == EXTRACT_OPT)
+		{
+			fout = fopen(header->name, "w");
+		}
+
 		for (long i = 0; i < num_file_blocks; i++)
 		{
 			blocks_read = fread(block, BLOCKSIZE, 1, fp);
@@ -318,8 +324,15 @@ void op_on_archive(struct tar_action_s operations)
 				warnx("Unexpected EOF in archive");
 				errx(2, "Error is not recoverable: exiting now");
 			}
+			if (operations.option == EXTRACT_OPT)
+			{
+				fwrite(block, BLOCKSIZE, 1, fout);
+			}
 		}
-
+		if (operations.option == EXTRACT_OPT)
+		{
+			fclose(fout);
+		}
 	}
 	// A tar archive should end with two zero-blocks.
 	// Read a block to check that condition
