@@ -292,7 +292,7 @@ void op_on_archive(struct tar_action_s operations)
 	
 	// Allocate memory for the header
 	struct posix_header* header = malloc(sizeof(struct posix_header)); 
-	char* block = malloc(BLOCKSIZE);
+	char* block = malloc(BLOCKSIZE*sizeof(char));
 	if (header == NULL || block == NULL)
 	{
 		errx(2, "Unable to allocate memory to read archive. Error is not recoverable: exiting now");
@@ -314,6 +314,10 @@ void op_on_archive(struct tar_action_s operations)
 		if (operations.option == EXTRACT_OPT)
 		{
 			fout = fopen(header->name, "w");
+			if (fout == NULL)
+			{
+				errx(2, "Unable to open file %s: exiting now", header->name);
+			}
 		}
 
 		for (long i = 0; i < num_file_blocks; i++)
@@ -326,16 +330,23 @@ void op_on_archive(struct tar_action_s operations)
 			}
 			if (operations.option == EXTRACT_OPT)
 			{
-				fwrite(block, BLOCKSIZE, 1, fout);
+				if (fwrite(block, BLOCKSIZE, 1, fout) != 1)
+				{
+					errx(2, "Error writing block in %s: exiting now", header->name);
+				}
 			}
 		}
 		if (operations.option == EXTRACT_OPT)
 		{
-			fclose(fout);
+			if (fclose(fout) != 0)
+			{
+				errx(2, "Error closing %s: exiting now", header->name);
+			}
 		}
 	}
+	
 	// A tar archive should end with two zero-blocks.
-	// Read a block to check that condition
+	// Read a block to check that condition holds
 	blocks_read = fread(block, BLOCKSIZE, 1, fp);
 	// If we have read one zero-block already, but previous read was unsuccessful
 	if (num_zero_blocks == 1 && blocks_read == 0)
@@ -363,6 +374,7 @@ void op_on_archive(struct tar_action_s operations)
 		errx(2, "Error closing %s: exiting now", archive_name);
 	}
 	free(header);
+	// free(block);
 }
 
 
