@@ -205,6 +205,42 @@ int is_empty(char* block)
 	return -1;
 }
 
+
+/**
+ * @brief Read BLOCKSIZE bytes from fp into header and check for errors whether read block was a correct tar header.
+ * @param fp FILE* from where to read BLOCKSIZE bytes
+ * @param header Tar header struct
+ * @param num_zero_blocks Count of blocks with zero values
+ * @return 0 on success, -1 if recoverable error, otherwise exit with error.
+ */
+int fetch_header(FILE* fp, struct posix_header* header, int* num_zero_blocks)
+{
+	// Read the header
+	size_t blocks_read = fread(header, 1, BLOCKSIZE, fp);  
+	
+	if (blocks_read == 0)
+	{
+		return -1;
+	}
+	// Reading a block of 0's signals end of archive
+	if (is_empty((char*)header))
+	{
+		(*num_zero_blocks)++;
+		return -1;
+	}
+
+	if (strcmp(header->magic, gnu_magic) != 0 && strcmp(header->magic, ustar_magic) != 0)
+	{
+		warnx("This does not look like a tar archive");
+		errx(2, "Exiting with failure status due to previous errors");
+	}
+	if (header->typeflag != REGTYPE)
+	{
+		errx(2, "Unsupported header type: %d\n", header->typeflag);
+	}
+	return 0;
+}
+
 /**
  * @brief List the contents of a tar archive.
  * Exits with an error if something goes wrong.
@@ -319,6 +355,7 @@ void list_archive(char *archive_name, char** file_list, size_t file_list_len)
 
 int main(int argc, char** argv)
 {
+	// Get the parsed form of the command line arguments.
 	struct tar_action_s operations = parse_args(argc, argv);
 	
 	switch (operations.option)
