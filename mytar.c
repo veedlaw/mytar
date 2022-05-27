@@ -309,58 +309,61 @@ void list_archive(char *archive_name, char** file_list, size_t file_list_len, in
 		errx(2, "Unable to allocate memory to read archive. Error is not recoverable: exiting now");
 	}
 	
-	size_t bytes_read = 0;
+	size_t blocks_read = 0;
 	int num_zero_blocks = 0;
 
-	while(1)
+	// Repeat for each valid header we read:
+	while(fetch_header(fp, header, &num_zero_blocks) == 0)
 	{
-		// Read the header
-		bytes_read = fread(header, 1, BLOCKSIZE, fp);  
-		
-		if (bytes_read == 0)
+		if (verbose)
 		{
-			break;
+			show_filename(header->name, file_list, file_list_len);
 		}
-		if (is_empty((char*)header))
-		{
-			num_zero_blocks++;
-			break;
-		}
+		// Calculate the number of blocks the file occupies in the archive
+		long num_file_blocks = filesize_to_block_count(header->size);
 
-		if (strcmp(header->magic, gnu_magic) != 0 && strcmp(header->magic, ustar_magic) != 0)
+		for (long i = 0; i < num_file_blocks; i++)
 		{
-			errx(2, "This does not look like a tar archive: %s", header->name);
-		}
-		if (header->typeflag != REGTYPE)
-		{
-			errx(2, "Unsupported header type: %d\n", header->typeflag);
-		}
-
-		// Check if the user has specified some files and if so
-		// check if we have found a file the user is looking for.
-		if (*file_list != NULL)
-		{
-			for (int i = file_list_len - 1; i >= 0; i--)
+			blocks_read = fread(block, BLOCKSIZE, 1, fp);
+			if (blocks_read != 1)
 			{
-				if (file_list[i] != NULL && strcmp(file_list[i], header->name) == 0)
-				{
-					// Remove the filename so we know we have found it already.
-					file_list[i] = "";
-					printf("%s\n", header->name);
-					// otherwise unbuffered warnings get printed before as stderr is unbuffered.
-					fflush(stdout);  
-				}
+				warnx("Unexpected EOF in archive");
+				errx(2, "Error is not recoverable: exiting now");
 			}
 		}
-		else
-		{
-			// If the user has not specified any files then we print all files.
-			printf("%s\n", header->name);
-			fflush(stdout);  
-		}
 
-		long size_in_bytes = oct_to_dec(header->size);
-		int num_file_blocks = size_in_bytes / BLOCKSIZE;
+	}
+	// A tar archive should end with two zero-blocks.
+	// Read a block to check that condition
+	blocks_read = fread(block, BLOCKSIZE, 1, fp);
+	// If we have read one zero-block already, but previous read was unsuccessful
+	if (num_zero_blocks == 1 && blocks_read == 0)
+	{
+		warnx("A lone zero block at %ld", ftell(fp) / BLOCKSIZE);
+	}
+
+	// Check if we didn't find any files the user looked for.
+	int num_errors = 0;
+	for (size_t i = 0; i < file_list_len; i++)
+	{
+		if (file_list[i] != NULL && strcmp(file_list[i], ""))
+		{
+			warnx("%s: Not found in archive", file_list[i]);
+			num_errors++;
+		}
+	}
+	if (num_errors != 0)
+	{
+		errx(2, "Exiting with failure status due to previous errors");
+	}
+
+	if (fclose(fp) != 0)
+	{
+		errx(2, "Error closing %s: exiting now", archive_name);
+	}
+	free(header);
+}
+
 
 		fseek(fp, (num_file_blocks - 1) * BLOCKSIZE, SEEK_CUR);
 		bytes_read = fread(block, 1, BLOCKSIZE, fp);
