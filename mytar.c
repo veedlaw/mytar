@@ -174,9 +174,9 @@ long oct_to_dec(char *oct_str)
  * @brief Checks if BLOCKSIZE bytes of block are the null byte
  * @return 0 if true -1 otherwise.
  */
-int is_empty(char *block)
+int is_empty(char *block, size_t block_size)
 {
-	for (size_t i = 0; i < BLOCKSIZE; i++)
+	for (size_t i = 0; i < block_size; i++)
 	{
 		if (block[i] != '\0')
 		{
@@ -196,14 +196,19 @@ int is_empty(char *block)
 int fetch_header(FILE *fp, struct posix_header *header, int *num_zero_blocks)
 {
 	// Read the header
-	size_t blocks_read = fread(header, 1, BLOCKSIZE, fp);
+	size_t blocks_read = fread(header, 1, sizeof(struct posix_header), fp);
+	// Skip padding (?)
+	if (fseek(fp, 12, SEEK_CUR) == -1)
+	{
+		errx(2, "Error navigating header: exiting now.");
+	}
 
 	if (blocks_read == 0)
 	{
 		return -1;
 	}
 	// Reading a block of 0's signals end of archive
-	if (is_empty((char *)header))
+	if (is_empty((char *)header, sizeof(struct posix_header)))
 	{
 		(*num_zero_blocks)++;
 		return -1;
@@ -370,7 +375,7 @@ void op_on_archive(struct tar_action_s operations)
 		errx(2, "Error closing %s: exiting now", archive_name);
 	}
 	free(header);
-	// free(block);
+	free(block);
 }
 
 int main(int argc, char **argv)
