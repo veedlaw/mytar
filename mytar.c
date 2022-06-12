@@ -331,7 +331,12 @@ void op_on_archive(struct tar_action_s operations)
 	// If we have read one zero-block already, but previous read was unsuccessful
 	if (num_zero_blocks == 1 && blocks_read == 0)
 	{
-		warnx("A lone zero block at %ld", ftell(fp) / BLOCKSIZE);
+		long stream_pos = ftell(fp);
+		if (stream_pos == -1)
+		{
+			errx(2, "Unable to navigate archive. Error is not recoverable: exiting now.");
+		}
+		warnx("A lone zero block at %ld", stream_pos / BLOCKSIZE);
 	}
 
 	// Check if we didn't find any files the user looked for.
