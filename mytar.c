@@ -40,32 +40,6 @@ enum Option
 };
 
 /**
- * @brief Returns cmd-line arguments.
- *
- * Walks the given pointer and returns each string.
- *
- * @param argv Command-line arguments.
- * @return Argument or character of option or NULL at end of input.
- */
-char *get_arg(char ***argv)
-{
-	while (NULL != **argv)
-	{
-		if (***argv == '-')
-		{
-			(*argv)++;
-			return **argv;
-		}
-		else
-		{
-			(*argv)++;
-			return **argv;
-		}
-	}
-	return NULL;
-}
-
-/**
  * Describes a tar action
  */
 struct tar_action_s
@@ -102,8 +76,10 @@ struct tar_action_s parse_args(int argc, char **argv)
 
 	int num_file = 0;
 	char *arg;
-	while ((arg = get_arg(&argv)) != NULL)
+	int filename_read = 0;
+	for(int i = 1; i < argc; i++)
 	{
+		arg = argv[i];
 		if (arg[0] == '-')
 		{
 			switch (arg[1])
@@ -120,12 +96,12 @@ struct tar_action_s parse_args(int argc, char **argv)
 				 * If it is specified then the next word in
 				 * arguments is the filename.
 				 */
-				argv++;
-				if (NULL == *argv)
+				if (i + 1 == argc)
 				{
 					err(64, "option requires an argument -- 'f'");
 				}
-				tar_action.filename = *argv;
+				filename_read = 1;
+				tar_action.filename = argv[i + 1];
 				break;
 			case 'v':
 				tar_action.verbose = 1;
@@ -137,18 +113,25 @@ struct tar_action_s parse_args(int argc, char **argv)
 		}
 		else
 		{
-			tar_action.file_list[num_file] = *argv;
+			// Filename is read straight away when processing the option,
+			// Avoid reading it into files list.
+			if (filename_read == 1)
+			{
+				filename_read = 0;
+				continue;
+			}
+			tar_action.file_list[num_file] = arg;
 			num_file++;
 		}
 	}
 
-	if (NULL != tar_action.filename && tar_action.option == NO_OPT)
+	if (tar_action.filename != NULL && tar_action.option == NO_OPT)
 	{
 		errx(2, "You must specify one of the '-tx' options");
 	}
 	if (tar_action.option == NO_OPT)
 	{
-		errx(2, "a");
+		errx(2, "");
 	}
 
 	return tar_action;
@@ -221,7 +204,7 @@ int fetch_header(FILE *fp, struct posix_header *header, int *num_zero_blocks)
 	}
 	if (header->typeflag != REGTYPE)
 	{
-		errx(2, "Unsupported header type: %d\n", header->typeflag);
+		errx(2, "Unsupported header type: %d", header->typeflag);
 	}
 	return 0;
 }
