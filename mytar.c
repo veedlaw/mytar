@@ -125,13 +125,9 @@ struct tar_action_s parse_args(int argc, char **argv)
 		}
 	}
 
-	if (tar_action.filename != NULL && tar_action.option == NO_OPT)
-	{
-		errx(2, "You must specify one of the '-tx' options");
-	}
 	if (tar_action.option == NO_OPT)
 	{
-		errx(2, "");
+		errx(2, "You must specify one of the '-tx' options");
 	}
 
 	return tar_action;
@@ -180,16 +176,16 @@ int fetch_header(FILE *fp, struct posix_header *header, int *num_zero_blocks)
 {
 	// Read the header
 	size_t blocks_read = fread(header, 1, sizeof(struct posix_header), fp);
-	// Skip padding (?)
-	if (fseek(fp, 12, SEEK_CUR) == -1)
-	{
-		errx(2, "Error navigating header: exiting now.");
-	}
-
 	if (blocks_read == 0)
 	{
 		return -1;
 	}
+	// Skip header padding 
+	if (fseek(fp, BLOCKSIZE - sizeof(struct posix_header), SEEK_CUR) == -1)
+	{
+		errx(2, "Error navigating header: exiting now.");
+	}
+
 	// Reading a block of 0's signals end of archive
 	if (is_empty((char *)header, sizeof(struct posix_header)))
 	{
